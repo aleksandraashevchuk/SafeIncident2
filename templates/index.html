@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Инциденты | SafeIncident{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Список инцидентов</h1>
+    {% if current_user %}
+        <a href="/incidents/create" class="btn btn-primary">Создать инцидент</a>
+    {% else %}
+        <a href="/login" class="btn btn-outline-primary">Войти, чтобы создать инцидент</a>
+    {% endif %}
+</div>
+
+<form method="get" action="/" class="card shadow-sm mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <input type="text" name="q" class="form-control" placeholder="Поиск по названию или локации" value="{{ search_query }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">Все статусы</option>
+                    {% for option in status_options %}
+                        <option value="{{ option.value }}" {% if selected_status == option.value %}selected{% endif %}>
+                            {{ status_labels[option] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-grid d-md-flex gap-2">
+                <button type="submit" class="btn btn-outline-primary w-100">Поиск</button>
+                <a href="/" class="btn btn-outline-secondary w-100">Сброс</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Всего инцидентов</div>
+                <div class="display-6">{{ total_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Активные инциденты</div>
+                <div class="display-6">{{ active_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h6 mb-0">Сводка по статусам</h2>
+            <span class="small text-muted">Решено: {{ resolved_percent }}%</span>
+        </div>
+        <div class="progress mb-3" role="progressbar" aria-label="Процент решенных инцидентов" aria-valuenow="{{ resolved_percent }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar bg-success" style="width: {{ resolved_percent }}%">{{ resolved_percent }}%</div>
+        </div>
+        <div class="row g-2">
+            {% for option in status_options %}
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 h-100">
+                        <div><span class="badge {{ status_badge_classes[option] }}">{{ status_labels[option] }}</span></div>
+                        <div class="h4 mt-2 mb-0">{{ status_counts[option] }}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0 align-middle">
+                <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Локация</th>
+                    <th>Статус</th>
+                    <th>Дата создания</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for incident in incidents %}
+                    <tr class="{% if incident.status.value in ['NEW', 'IN_PROGRESS'] %}table-warning{% endif %}">
+                        <td>{{ incident.id }}</td>
+                        <td>{{ incident.title }}</td>
+                        <td>{{ incident.location }}</td>
+                        <td>
+                            <span class="badge {{ status_badge_classes[incident.status] }}">
+                                {{ status_labels[incident.status] }}
+                            </span>
+                        </td>
+                        <td>{{ incident.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                        <td class="text-end">
+                            <a href="/incidents/{{ incident.id }}" class="btn btn-sm btn-outline-primary">Подробнее</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">Инцидентов пока нет. Создайте первый инцидент.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="small text-muted mt-2">
+    Подсветка строк: активные инциденты (НОВЫЙ, В РАБОТЕ).
+</div>
+{% endblock %}

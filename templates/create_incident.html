@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Создание инцидента | SafeIncident{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Создание инцидента</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" action="/incidents/create">
+            <div class="mb-3">
+                <label for="title" class="form-label">Название</label>
+                <input type="text" id="title" name="title" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Описание</label>
+                <textarea id="description" name="description" class="form-control" rows="5" required></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="location" class="form-label">Локация</label>
+                <input type="text" id="location" name="location" class="form-control" required>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Создать</button>
+                <a href="/" class="btn btn-outline-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SafeIncident{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/">SafeIncident</a>
+        <div class="navbar-nav me-auto">
+            <a class="nav-link" href="/">Инциденты</a>
+            <a class="nav-link" href="/incidents/create">Создать</a>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            {% if current_user %}
+                <span class="badge text-bg-success">Авторизован</span>
+                <span class="text-light small">Пользователь: {{ current_user.username }}</span>
+                <form method="post" action="/logout" class="m-0">
+                    <button type="submit" class="btn btn-sm btn-outline-light">Выйти</button>
+                </form>
+            {% else %}
+                <span class="badge text-bg-secondary">Гость</span>
+                <a class="btn btn-sm btn-outline-light" href="/login">Войти</a>
+                <a class="btn btn-sm btn-light" href="/register">Регистрация</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<main class="container pb-4">
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,12 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    border: 0;
+}
+
+.badge {
+    letter-spacing: 0.02em;
+}
+
