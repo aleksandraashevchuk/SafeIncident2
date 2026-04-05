@@ -100,16 +100,17 @@ jobs:
           source venv/bin/activate
           mypy --ignore-missing-imports backend || true
 
-      # ====== ВОТ ЭТО ГЛАВНОЕ ДЛЯ ЛР7 ======
       - name: Run Pytest Tests
         run: |
           source venv/bin/activate
+          export PYTHONPATH=$PWD
           echo "Running pytest tests..."
           pytest tests/ -v --tb=short
 
       - name: Run Pytest with Coverage
         run: |
           source venv/bin/activate
+          export PYTHONPATH=$PWD
           echo "Running pytest with coverage..."
           pytest tests/ --cov=backend --cov-report=term-missing --cov-report=xml
           echo "Coverage report:"
@@ -118,9 +119,9 @@ jobs:
       - name: Check Test Coverage
         run: |
           source venv/bin/activate
+          export PYTHONPATH=$PWD
           echo "Checking test coverage (target: 40%)..."
           pytest tests/ --cov=backend --cov-report=term --cov-fail-under=40
-      # =====================================
 
       - name: Stop existing containers (if any)
         run: |
@@ -168,8 +169,59 @@ jobs:
             exit 1
           fi
 
+          if docker exec safeincident-app sh -c 'tr "\0" " " < /proc/1/cmdline' | grep -qi "uvicorn"; then
+            echo "Uvicorn process is running in container"
+          else
+            echo "ERROR: Uvicorn process is NOT running as PID 1!"
+            echo "PID 1 command line:"
+            docker exec safeincident-app sh -c 'tr "\0" " " < /proc/1/cmdline' || echo "Cannot check PID 1"
+            echo "Container logs:"
+            docker logs safeincident-app --tail 50
+            exit 1
+          fi
+
       - name: Check application health
         run: |
+          echo "Checking application health endpoint..."
+          max_attempts=30
+          attempt=0
+
+          while [ $attempt -lt $max_attempts ]; do
+            if docker exec safeincident-app curl -f http://localhost:8000/ > /dev/null 2>&1; then
+              echo "Application is responding from inside container!"
+              break
+            fi
+
+            if curl -f http://localhost:8000/ > /dev/null 2>&1; then
+              echo "Application is responding from host!"
+              break
+            fi
+
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts: Waiting for application..."
+
+            if [ $((attempt % 5)) -eq 0 ]; then
+              echo "Recent application logs:"
+              docker logs safeincident-app --tail 20
+            fi
+
+            sleep 2
+          done
+
+          if [ $attempt -eq $max_attempts ]; then
+            echo "ERROR: Application did not respond after $max_attempts attempts"
+            echo "Full application logs:"
+            docker logs safeincident-app
+            echo ""
+            echo "Docker compose logs:"
+            docker compose logs app
+            echo ""
+            echo "Container status:"
+            docker ps -a --filter "name=safeincident-app"
+            exit 1
+          fi
+
+          echo "Final health check:"
           curl -v http://localhost:8000/ || docker exec safeincident-app curl -v http://localhost:8000/
 
       - name: Upload Bandit report
