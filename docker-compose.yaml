@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: safeincident-db
+    environment:
+      POSTGRES_DB: safeincident
+      POSTGRES_USER: safeincident
+      POSTGRES_PASSWORD: safeincident
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: safeincident-app
+    environment:
+      DATABASE_URL: postgresql+psycopg://safeincident:safeincident@db:5432/safeincident
+      SESSION_SECRET_KEY: safeincident-dev-secret-key
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
