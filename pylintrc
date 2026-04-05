@@ -1,0 +1,17 @@
+[MASTER]
+ignore=.git,.venv,.idea,__pycache__
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    duplicate-code
+
+[FORMAT]
+max-line-length=100
+
+[DESIGN]
+max-args=8
+
