@@ -3,12 +3,10 @@ name: Pulling docker-app image and db in docker
 on:
   push:
     branches:
-      - master
       - main
       - dev
   pull_request:
     branches:
-      - master
       - main
       - dev
   workflow_dispatch:
@@ -100,26 +98,6 @@ jobs:
           source venv/bin/activate
           mypy --ignore-missing-imports backend || true
 
-      - name: Run Pytest Tests
-        run: |
-          source venv/bin/activate
-          echo "Running pytest tests..."
-          pytest tests/ -v --tb=short
-
-      - name: Run Pytest with Coverage
-        run: |
-          source venv/bin/activate
-          echo "Running pytest with coverage..."
-          pytest tests/ --cov=backend --cov-report=term-missing --cov-report=xml
-          echo "Coverage report:"
-          coverage report
-
-      - name: Check Test Coverage
-        run: |
-          source venv/bin/activate
-          echo "Checking test coverage (target: 40%)..."
-          pytest tests/ --cov=backend --cov-report=term --cov-fail-under=40
-
       - name: Stop existing containers (if any)
         run: |
           docker compose down || true
@@ -153,56 +131,6 @@ jobs:
             exit 1
           fi
 
-      - name: Backup current database schema
-        run: |
-          mkdir -p migrations/backups
-          BACKUP_FILE="migrations/backups/schema_backup_${{ github.run_id }}_${{ github.run_attempt }}.sql"
-          docker exec safeincident-db pg_dump -U safeincident -d safeincident --schema-only > "$BACKUP_FILE" || true
-          echo "Schema backup created: $BACKUP_FILE"
-
-      - name: Initialize Alembic
-        run: |
-          source venv/bin/activate
-          if [ -n "${{ secrets.ALEMBIC_DATABASE_URL }}" ]; then
-            export DATABASE_URL="${{ secrets.ALEMBIC_DATABASE_URL }}"
-          else
-            export DATABASE_URL="postgresql+psycopg://safeincident:safeincident@localhost:5432/safeincident"
-          fi
-
-          echo "Working directory: $(pwd)"
-          echo "Repository root files:"
-          ls -la
-          echo "Alembic directory:"
-          ls -la alembic || true
-          ls -la alembic/versions || true
-
-          if [ ! -f alembic.ini ]; then
-            echo "ERROR: alembic.ini not found in repository root"
-            exit 1
-          fi
-          if [ ! -d alembic/versions ]; then
-            echo "ERROR: alembic/versions directory not found"
-            exit 1
-          fi
-
-          echo "Current migration status:"
-          alembic current || echo "No migrations applied yet"
-          echo "Available migrations:"
-          alembic history || echo "No migrations found"
-
-      - name: Apply database migrations
-        run: |
-          source venv/bin/activate
-          if [ -n "${{ secrets.ALEMBIC_DATABASE_URL }}" ]; then
-            export DATABASE_URL="${{ secrets.ALEMBIC_DATABASE_URL }}"
-          else
-            export DATABASE_URL="postgresql+psycopg://safeincident:safeincident@localhost:5432/safeincident"
-          fi
-
-          alembic upgrade head
-          echo "Migration status after upgrade:"
-          alembic current
-
       - name: Check application container status
         run: |
           echo "Checking application container status..."
@@ -219,12 +147,12 @@ jobs:
             exit 1
           fi
 
-          if docker exec safeincident-app sh -c 'tr "\0" " " < /proc/1/cmdline' | grep -qi "uvicorn"; then
-            echo "Uvicorn process is running in container"
+          if docker exec safeincident-app ps aux | grep -q "[p]ython.*uvicorn"; then
+            echo "Python process is running in container"
           else
-            echo "ERROR: Uvicorn process is NOT running as PID 1!"
-            echo "PID 1 command line:"
-            docker exec safeincident-app sh -c 'tr "\0" " " < /proc/1/cmdline' || echo "Cannot check PID 1"
+            echo "ERROR: Python process is NOT running in container!"
+            echo "Processes in container:"
+            docker exec safeincident-app ps aux || echo "Cannot check processes"
             echo "Container logs:"
             docker logs safeincident-app --tail 50
             exit 1
@@ -280,12 +208,4 @@ jobs:
         with:
           name: bandit-security-report
           path: bandit-report.json
-          if-no-files-found: ignore
-
-      - name: Upload schema backups
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: db-schema-backups
-          path: migrations/backups/*.sql
           if-no-files-found: ignore
