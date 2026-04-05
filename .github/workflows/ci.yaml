@@ -103,12 +103,14 @@ jobs:
       - name: Run Pytest Tests
         run: |
           source venv/bin/activate
+          export PYTHONPATH=$PWD
           echo "Running pytest tests..."
           pytest tests/ -v --tb=short
 
       - name: Run Pytest with Coverage
         run: |
           source venv/bin/activate
+          export PYTHONPATH=$PWD
           echo "Running pytest with coverage..."
           pytest tests/ --cov=backend --cov-report=term-missing --cov-report=xml
           echo "Coverage report:"
@@ -117,6 +119,7 @@ jobs:
       - name: Check Test Coverage
         run: |
           source venv/bin/activate
+          export PYTHONPATH=$PWD
           echo "Checking test coverage (target: 40%)..."
           pytest tests/ --cov=backend --cov-report=term --cov-fail-under=40
 
