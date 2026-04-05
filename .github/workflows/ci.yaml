@@ -147,12 +147,12 @@ jobs:
             exit 1
           fi
 
-          if docker exec safeincident-app ps aux | grep -q "[p]ython.*uvicorn"; then
-            echo "Python process is running in container"
+          if docker exec safeincident-app sh -c 'tr "\0" " " < /proc/1/cmdline' | grep -qi "uvicorn"; then
+            echo "Uvicorn process is running in container"
           else
-            echo "ERROR: Python process is NOT running in container!"
-            echo "Processes in container:"
-            docker exec safeincident-app ps aux || echo "Cannot check processes"
+            echo "ERROR: Uvicorn process is NOT running as PID 1!"
+            echo "PID 1 command line:"
+            docker exec safeincident-app sh -c 'tr "\0" " " < /proc/1/cmdline' || echo "Cannot check PID 1"
             echo "Container logs:"
             docker logs safeincident-app --tail 50
             exit 1
