@@ -43,7 +43,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
 
       - name: Create virtual environment
         run: |
@@ -156,6 +155,57 @@ jobs:
             exit 1
           fi
 
+      - name: Backup current database schema
+        run: |
+          mkdir -p migrations/backups
+          BACKUP_FILE="migrations/backups/schema_backup_${{ github.run_id }}_${{ github.run_attempt }}.sql"
+          docker exec safeincident-db pg_dump -U safeincident -d safeincident --schema-only > "$BACKUP_FILE" || true
+          echo "Schema backup created: $BACKUP_FILE"
+
+      - name: Initialize Alembic
+        run: |
+          source venv/bin/activate
+          if [ -n "${{ secrets.ALEMBIC_DATABASE_URL }}" ]; then
+            export DATABASE_URL="${{ secrets.ALEMBIC_DATABASE_URL }}"
+          else
+            export DATABASE_URL="postgresql+psycopg://safeincident:safeincident@localhost:5432/safeincident"
+          fi
+
+          echo "Working directory: $(pwd)"
+          echo "Repository root files:"
+          ls -la
+          echo "Alembic directory:"
+          ls -la alembic || true
+          ls -la alembic/versions || true
+
+          if [ ! -f alembic.ini ]; then
+            echo "ERROR: alembic.ini not found in repository root"
+            exit 1
+          fi
+
+          if [ ! -d alembic/versions ]; then
+            echo "ERROR: alembic/versions directory not found"
+            exit 1
+          fi
+
+          echo "Current migration status:"
+          alembic current || echo "No migrations applied yet"
+          echo "Available migrations:"
+          alembic history || echo "No migrations found"
+
+      - name: Apply database migrations
+        run: |
+          source venv/bin/activate
+          if [ -n "${{ secrets.ALEMBIC_DATABASE_URL }}" ]; then
+            export DATABASE_URL="${{ secrets.ALEMBIC_DATABASE_URL }}"
+          else
+            export DATABASE_URL="postgresql+psycopg://safeincident:safeincident@localhost:5432/safeincident"
+          fi
+
+          alembic upgrade head
+          echo "Migration status after upgrade:"
+          alembic current
+
       - name: Check application container status
         run: |
           echo "Checking application container status..."
@@ -233,4 +283,12 @@ jobs:
         with:
           name: bandit-security-report
           path: bandit-report.json
+          if-no-files-found: ignore
+
+      - name: Upload schema backups
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-schema-backups
+          path: migrations/backups/*.sql
           if-no-files-found: ignore
